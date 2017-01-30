@@ -9,6 +9,17 @@ use PHPUnit\Framework\TestCase;
  * @covers Azenet\IniParser\IniParser
  */
 class IniParserTest extends TestCase {
+	private $baseDataWithSections = <<<EOF
+[Section1]
+key1=value1
+key2=
+
+[Section2]
+key1=value2
+key2=value1
+EOF;
+	private $baseDataWithSectionsResult = ['Section1' => ['key1' => 'value1', 'key2' => ''], 'Section2' => ['key1' => 'value2', 'key2' => 'value1']];
+
 	protected function setUp() {
 		register_shutdown_function(function () {
 			if (file_exists("tempfile")) {
@@ -21,42 +32,16 @@ class IniParserTest extends TestCase {
 
 	public function testIniWithSections() {
 		$c = new IniParser();
-		$c->readFromString(<<<EOF
-[Section1]
-key1=value1
-key2=
-
-[Section2]
-key1=value2
-key2=value1
-EOF
+		$c->readFromString($this->baseDataWithSections
 		);
 
-		$this->assertEquals(['Section1' => ['key1' => 'value1', 'key2' => ''], 'Section2' => ['key1' => 'value2', 'key2' => 'value1']], $c->getRawData());
-		$this->assertEquals(<<<EOF
-[Section1]
-key1=value1
-key2=
-
-[Section2]
-key1=value2
-key2=value1
-EOF
-			, trim($c->buildOutput()));
+		$this->assertEquals($this->baseDataWithSectionsResult, $c->getRawData());
+		$this->assertEquals($this->baseDataWithSections, trim($c->buildOutput()));
 	}
 
 	public function testIniWithoutSections() {
 		$c = new IniParser();
-		$c->readFromString(<<<EOF
-[Section1]
-key1=value1
-key2=
-
-[Section2]
-key1=value2
-key2=value1
-EOF
-			, false);
+		$c->readFromString($this->baseDataWithSections, false);
 
 		$this->assertEquals(['default' => ['key1' => 'value2', 'key2' => 'value1']], $c->getRawData());
 		$this->assertEquals(<<<EOF
@@ -78,28 +63,47 @@ EOF
 	/**
 	 * @requires testIniWithSections
 	 */
-	public function testWriteFile() {
+	public function testWriteAndReadFile() {
 		$c = new IniParser();
-		$c->readFromString(<<<EOF
-[Section1]
-key1=value1
-key2=
+		$c->readFromString($this->baseDataWithSections);
 
-[Section2]
+		$this->assertTrue($c->write(true, "tempfile"), "File was not written properly");
+
+		$c->readFromFile("tempfile", true);
+		$this->assertEquals($this->baseDataWithSectionsResult, $c->getRawData());
+
+		unlink("tempfile");
+	}
+
+	public function testHas() {
+		$c = new IniParser();
+		$c->readFromString($this->baseDataWithSections);
+
+		$this->assertEquals($this->baseDataWithSectionsResult, $c->getRawData());
+		$this->assertTrue($c->has("Section1"));
+		$this->assertFalse($c->has("Section3"));
+		$this->assertTrue($c->has("Section1", "key1"));
+		$this->assertFalse($c->has("Section1", "key3"));
+		$this->assertFalse($c->has(null, "key1"));
+
+		$c->readFromString(<<<EOF
 key1=value2
 key2=value1
 EOF
 		);
 
-		$this->assertTrue($c->write(true, "tempfile"), "File was not written properly");
+		$this->assertFalse($c->has("Section1"));
+		$this->assertTrue($c->has(null, "key1"));
 	}
 
-	/**
-	 * @requires testWriteFile
-	 */
-	public function testReadFile() {
+	public function testReadValuesWithSpaces() {
 		$c = new IniParser();
-		$c->readFromFile("tempfile", true);
-		$this->assertEquals(['Section1' => ['key1' => 'value1', 'key2' => ''], 'Section2' => ['key1' => 'value2', 'key2' => 'value1']], $c->getRawData());
+		$c->readFromString(<<<EOF
+key1 = value2
+key2 = value1
+EOF
+			, false);
+
+		$this->assertEquals(['default' => ['key1' => 'value2', 'key2' => 'value1']], $c->getRawData());
 	}
 }

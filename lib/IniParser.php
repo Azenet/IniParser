@@ -4,7 +4,6 @@ namespace Azenet\IniParser;
 
 class IniParser {
 	private $filename;
-	private $initialized = false;
 	private $sections;
 
 	public function readFromFile($filename, $withSections = true) {
@@ -19,10 +18,9 @@ class IniParser {
 	}
 
 	public function readFromString($content, $withSections = true) {
-		if (empty($content)) {
-			$this->sections    = [];
-			$this->initialized = true;
+		$this->sections = [];
 
+		if (empty($content)) {
 			return $this;
 		}
 
@@ -33,9 +31,12 @@ class IniParser {
 				continue;
 			}
 
-			if (empty($line) || !preg_match('/^([^=]+)=(.*)$/', $line, $matches)) {
+			if (empty($line) || !preg_match('/^\s*([^=]+)\s*=\s*(.*)\s*$/', $line, $matches)) {
 				continue;
 			}
+
+			$key = trim($matches[1]);
+			$value = trim($matches[2]);
 
 			if ($withSections) {
 				if (null === $currentSection) {
@@ -46,7 +47,7 @@ class IniParser {
 					$this->sections[$currentSection] = [];
 				}
 
-				$this->sections[$currentSection][$matches[1]] = $matches[2];
+				$this->sections[$currentSection][$key] = $value;
 			} else {
 				$currentSection = "default";
 
@@ -54,7 +55,7 @@ class IniParser {
 					$this->sections[$currentSection] = [];
 				}
 
-				$this->sections[$currentSection][$matches[1]] = $matches[2];
+				$this->sections[$currentSection][$key] = $value;
 			}
 		}
 
@@ -96,9 +97,8 @@ class IniParser {
 	}
 
 	public function set($section, $key, $value) {
-		if (null === $this->sections || !$this->initialized) {
-			$this->sections    = [];
-			$this->initialized = true;
+		if (null === $this->sections) {
+			$this->sections = [];
 		}
 
 		if (null === $section) {
@@ -112,5 +112,17 @@ class IniParser {
 		}
 
 		return $this;
+	}
+
+	public function has($section = null, $key = null) {
+		if (null === $section && null === $key) {
+			throw new \InvalidArgumentException("Section and Key cannot be both null.");
+		} else if (null !== $section && null === $key) {
+			return isset($this->sections[$section]);
+		} else if (null === $section && null !== $key && isset($this->sections['default'])) {
+			return isset($this->sections['default'][$key]);
+		} else {
+			return isset($this->sections[$section]) && isset($this->sections[$section][$key]);
+		}
 	}
 }
