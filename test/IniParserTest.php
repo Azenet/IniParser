@@ -9,6 +9,16 @@ use PHPUnit\Framework\TestCase;
  * @covers Azenet\IniParser\IniParser
  */
 class IniParserTest extends TestCase {
+	protected function setUp() {
+		register_shutdown_function(function () {
+			if (file_exists("tempfile")) {
+				unlink("tempfile");
+			}
+		});
+
+		parent::setUp();
+	}
+
 	public function testIniWithSections() {
 		$c = new IniParser();
 		$c->readFromString(<<<EOF
@@ -63,5 +73,33 @@ EOF
 	public function testExceptionOnUnreadableFile() {
 		$c = new IniParser();
 		$c->readFromFile("/does-not-exist");
+	}
+
+	/**
+	 * @requires testIniWithSections
+	 */
+	public function testWriteFile() {
+		$c = new IniParser();
+		$c->readFromString(<<<EOF
+[Section1]
+key1=value1
+key2=
+
+[Section2]
+key1=value2
+key2=value1
+EOF
+		);
+
+		$this->assertTrue($c->write(true, "tempfile"), "File was not written properly");
+	}
+
+	/**
+	 * @requires testWriteFile
+	 */
+	public function testReadFile() {
+		$c = new IniParser();
+		$c->readFromFile("tempfile", true);
+		$this->assertEquals(['Section1' => ['key1' => 'value1', 'key2' => ''], 'Section2' => ['key1' => 'value2', 'key2' => 'value1']], $c->getRawData());
 	}
 }
