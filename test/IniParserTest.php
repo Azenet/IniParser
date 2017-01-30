@@ -106,4 +106,83 @@ EOF
 
 		$this->assertEquals(['default' => ['key1' => 'value2', 'key2' => 'value1']], $c->getRawData());
 	}
+
+	public function testEmpty() {
+		$this->assertEquals([], (new IniParser())->readFromString("")->getRawData());
+	}
+
+	/**
+	 * @expectedException RuntimeException
+	 */
+	public function testExceptionOnWrite() {
+		(new IniParser())->write();
+	}
+
+	/**
+	 * @expectedException InvalidArgumentException
+	 */
+	public function testExceptionOnHas() {
+		(new IniParser())->has();
+	}
+
+	/**
+	 * @expectedException InvalidArgumentException
+	 */
+	public function testExceptionOnRemove() {
+		(new IniParser())->remove();
+	}
+
+	public function testSet() {
+		$c = (new IniParser())
+			->set("Section1", "key1", "value1")
+			->set("Section1", "key2", "")
+			->set("Section2", "key1", "value2")
+			->set("Section2", "key2", "value1");
+
+		$this->assertEquals($this->baseDataWithSectionsResult, $c->getRawData());
+
+		$c = (new IniParser())
+			->set(null, "key1", "value1")
+			->set(null, "key2", "value2");
+
+		$this->assertEquals(['default' => ['key1' => 'value1', 'key2' => 'value2']], $c->getRawData());
+	}
+
+	public function testRemove() {
+		$c = (new IniParser())->readFromString($this->baseDataWithSections);
+
+		$c->remove("Section1", "key1");
+		$this->assertEquals(['Section1' => ['key2' => ''], 'Section2' => ['key1' => 'value2', 'key2' => 'value1']], $c->getRawData());
+
+		$c->remove("Section2");
+		$this->assertEquals(['Section1' => ['key2' => '']], $c->getRawData());
+
+		$c->readFromString(<<<EOF
+key1=value1
+key2=value2
+EOF
+		);
+		$this->assertEquals(['default' => ['key1' => 'value1', 'key2' => 'value2']], $c->getRawData());
+
+		$c->remove(null, "key1");
+		$this->assertEquals(['default' => ['key2' => 'value2']], $c->getRawData());
+	}
+
+	/**
+	 * @expectedException InvalidArgumentException
+	 */
+	public function testExceptionOnRemoveWhenNoSectionsAreBeingUsed() {
+		$c = (new IniParser())->readFromString("key1=value1");
+
+		$c->remove("Section1", "key1");
+	}
+
+	/**
+	 * @expectedException InvalidArgumentException
+	 */
+	public function testExceptionOnRemovingWholeSectionWhenNoSectionsAreBeingUsed() {
+		$c = (new IniParser())->readFromString("key1=value1");
+
+		$c->remove("Section1");
+	}
 }

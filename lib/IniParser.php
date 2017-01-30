@@ -35,7 +35,7 @@ class IniParser {
 				continue;
 			}
 
-			$key = trim($matches[1]);
+			$key   = trim($matches[1]);
 			$value = trim($matches[2]);
 
 			if ($withSections) {
@@ -102,7 +102,11 @@ class IniParser {
 		}
 
 		if (null === $section) {
-			$this->sections[$key] = $value;
+			if (!isset($this->sections['default'])) {
+				$this->sections['default'] = [];
+			}
+
+			$this->sections['default'][$key] = $value;
 		} else {
 			if (!isset($this->sections[$section])) {
 				$this->sections[$section] = [];
@@ -123,6 +127,32 @@ class IniParser {
 			return isset($this->sections['default'][$key]);
 		} else {
 			return isset($this->sections[$section]) && isset($this->sections[$section][$key]);
+		}
+	}
+
+	public function remove($section = null, $key = null) {
+		if (null === $section && null === $key) {
+			throw new \InvalidArgumentException("Section and Key cannot be both null.");
+		} else if (null !== $section && null === $key) {
+			if (count($this->sections) === 1 && isset($this->sections['default'])) {
+				throw new \InvalidArgumentException("Sections are not being used.");
+			}
+
+			if ($this->has($section)) {
+				unset($this->sections[$section]);
+			}
+		} else if (null === $section && null !== $key) {
+			if ($this->has(null, $key)) {
+				unset($this->sections['default'][$key]);
+			}
+		} else {
+			if (count($this->sections) === 1 && isset($this->sections['default'])) {
+				throw new \InvalidArgumentException("Sections are not being used.");
+			}
+
+			if ($this->has($section, $key)) {
+				unset($this->sections[$section][$key]);
+			}
 		}
 	}
 }
