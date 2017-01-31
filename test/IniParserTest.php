@@ -43,6 +43,16 @@ EOF;
 		$c = new IniParser();
 		$c->readFromString($this->baseDataWithSections, false);
 
+		$this->assertEquals(['default' => ['key1' => ['value1', 'value2'], 'key2' => ['', 'value1']]], $c->getRawData());
+		$this->assertEquals(<<<EOF
+key1=value1
+key1=value2
+key2=
+key2=value1
+EOF
+			, trim($c->buildOutput(false)));
+
+		$c->readFromString($this->baseDataWithSections, false, false);
 		$this->assertEquals(['default' => ['key1' => 'value2', 'key2' => 'value1']], $c->getRawData());
 		$this->assertEquals(<<<EOF
 key1=value2
@@ -184,5 +194,22 @@ EOF
 		$c = (new IniParser())->readFromString("key1=value1");
 
 		$c->remove("Section1");
+	}
+
+	public function testRepeatedProperties() {
+		$c = (new IniParser())->readFromString(<<<EOF
+key1=value1
+key1=value2
+key1=value3
+EOF
+			, false);
+
+		$this->assertEquals(['default' => ['key1' => ['value1', 'value2', 'value3']]], $c->getRawData());
+		$this->assertEquals(<<<EOF
+key1=value1
+key1=value2
+key1=value3
+EOF
+			, trim($c->buildOutput(false)));
 	}
 }

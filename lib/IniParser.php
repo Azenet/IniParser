@@ -17,7 +17,7 @@ class IniParser {
 		return $this->readFromString($content, $withSections);
 	}
 
-	public function readFromString($content, $withSections = true) {
+	public function readFromString($content, $withSections = true, $allowRepeatedValues = true) {
 		$this->sections = [];
 
 		if (empty($content)) {
@@ -38,23 +38,22 @@ class IniParser {
 			$key   = trim($matches[1]);
 			$value = trim($matches[2]);
 
-			if ($withSections) {
-				if (null === $currentSection) {
-					$currentSection = "default";
-				}
-
-				if (!isset($this->sections[$currentSection])) {
-					$this->sections[$currentSection] = [];
-				}
-
-				$this->sections[$currentSection][$key] = $value;
-			} else {
+			if (null === $currentSection || !$withSections) {
 				$currentSection = "default";
+			}
 
-				if (!isset($this->sections[$currentSection])) {
-					$this->sections[$currentSection] = [];
+			if (!isset($this->sections[$currentSection])) {
+				$this->sections[$currentSection] = [];
+			}
+
+			if (isset($this->sections[$currentSection][$key]) && $allowRepeatedValues) { //repeated value
+				if (!is_array($this->sections[$currentSection][$key])) {
+					$lastValue                             = $this->sections[$currentSection][$key];
+					$this->sections[$currentSection][$key] = [$lastValue, $value];
+				} else {
+					$this->sections[$currentSection][$key][] = $value;
 				}
-
+			} else {
 				$this->sections[$currentSection][$key] = $value;
 			}
 		}
@@ -81,7 +80,13 @@ class IniParser {
 			}
 		} else if (isset($this->sections['default'])) {
 			foreach ($this->sections['default'] as $key => $value) {
-				$out .= sprintf("%s=%s\n", $key, $value);
+				if (is_array($value)) {
+					foreach ($value as $val) {
+						$out .= sprintf("%s=%s\n", $key, $val);
+					}
+				} else {
+					$out .= sprintf("%s=%s\n", $key, $value);
+				}
 			}
 		}
 
