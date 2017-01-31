@@ -73,7 +73,13 @@ class IniParser {
 				$out .= sprintf("[%s]\n", $sectionName);
 
 				foreach ($data as $key => $value) {
-					$out .= sprintf("%s=%s\n", $key, $value);
+					if (is_array($value)) {
+						foreach ($value as $val) {
+							$out .= sprintf("%s=%s\n", $key, $val);
+						}
+					} else {
+						$out .= sprintf("%s=%s\n", $key, $value);
+					}
 				}
 
 				$out .= "\n";

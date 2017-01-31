@@ -211,5 +211,22 @@ key1=value2
 key1=value3
 EOF
 			, trim($c->buildOutput(false)));
+
+		$c->readFromString(<<<EOF
+[section1]
+key1=value1
+key1=value2
+key1=value3
+EOF
+		);
+
+		$this->assertEquals(['section1' => ['key1' => ['value1', 'value2', 'value3']]], $c->getRawData());
+		$this->assertEquals(<<<EOF
+[section1]
+key1=value1
+key1=value2
+key1=value3
+EOF
+			, trim($c->buildOutput()));
 	}
 }
